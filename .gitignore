@@ -1,0 +1,17 @@
+.DS_Store
+
+# Compiled output
+/web/dist
+/web/tmp
+/web/out-tsc
+/web/bazel-out
+
+# Node
+/web/node_modules
+/web/npm-debug.log
+/web/yarn-error.log
+
+
+# Visual Studio Code
+.vscode/*
+
