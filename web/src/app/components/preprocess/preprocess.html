@@ -1,0 +1,201 @@
+<div class="preprocess-container">
+  <mat-card class="control-panel">
+    <mat-card-header>
+      <mat-card-title>Preprocess Sequences</mat-card-title>
+    </mat-card-header>
+    
+    <mat-card-content>
+      <!-- File Upload -->
+      <div class="form-field">
+        <label class="field-label">Input data:</label>
+        <div class="file-input-wrapper">
+          <input
+            type="file"
+            #fileInput
+            (change)="onFileSelected($event)"
+            accept=".fasta,.fa,.fastq,.fq,.gz"
+            style="display: none"
+            [disabled]="isUploading"
+          />
+          <button 
+            mat-raised-button 
+            (click)="fileInput.click()"
+            [disabled]="isUploading"
+          >
+            <mat-icon>folder_open</mat-icon>
+            Browse...
+          </button>
+          <span class="file-name">{{ fileName || 'FASTQ or FASTA file' }}</span>
+          <button 
+            *ngIf="uploadedFileId && !isUploading"
+            mat-icon-button
+            (click)="clearFile()"
+            matTooltip="Clear file"
+          >
+            <mat-icon>close</mat-icon>
+          </button>
+        </div>
+        
+        <!-- Upload Progress Bar -->
+        <div *ngIf="isUploading" class="upload-progress">
+          <mat-progress-bar mode="determinate" [value]="uploadProgress"></mat-progress-bar>
+          <span class="progress-text">Uploading... {{ uploadProgress }}%</span>
+        </div>
+        
+        <!-- Upload Success Indicator -->
+        <div *ngIf="uploadedFileId && !isUploading" class="upload-success">
+          <mat-icon color="primary">check_circle</mat-icon>
+          <span>File uploaded successfully! You can now configure parameters and start processing.</span>
+        </div>
+      </div>
+
+      <!-- 5' Constant Region -->
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Constant 5' region</mat-label>
+        <input
+          matInput
+          [(ngModel)]="const5p"
+          placeholder="Flanking sequence on left"
+          matTooltip="Flanking sequence on left"
+        />
+      </mat-form-field>
+
+      <!-- 3' Constant Region -->
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Constant 3' region</mat-label>
+        <input
+          matInput
+          [(ngModel)]="const3p"
+          placeholder="Flanking sequence on right"
+          matTooltip="Flanking sequence on right"
+        />
+      </mat-form-field>
+
+      <!-- Sequence Length Range -->
+      <div class="slider-field">
+        <label class="field-label">
+          Sequence length range:
+          <mat-icon
+            class="info-icon"
+            matTooltip="The minimum and maximum sequence lengths to retain after preprocessing"
+          >
+            info
+          </mat-icon>
+        </label>
+        <div class="slider-wrapper">
+          <span class="slider-value">{{ minLength }}</span>
+          <mat-slider
+            min="3"
+            max="500"
+            step="1"
+            discrete
+            [displayWith]="formatLengthLabel"
+          >
+            <input matSliderStartThumb [(ngModel)]="minLength" />
+            <input matSliderEndThumb [(ngModel)]="maxLength" />
+          </mat-slider>
+          <span class="slider-value">{{ maxLength }}</span>
+        </div>
+      </div>
+
+      <!-- Max Error -->
+      <div class="slider-field">
+        <label class="field-label">
+          Max allowed error for sequences:
+          <mat-icon
+            class="info-icon"
+            matTooltip="Maximum average base error per sequence (errors derived from Phred scores)"
+          >
+            info
+          </mat-icon>
+        </label>
+        <div class="slider-wrapper">
+          <span class="slider-value">{{ maxError.toFixed(3) }}</span>
+          <mat-slider
+            min="0.001"
+            max="1"
+            step="0.001"
+            discrete
+            [displayWith]="formatErrorLabel"
+          >
+            <input matSliderThumb [(ngModel)]="maxError" />
+          </mat-slider>
+          <span class="slider-value">1.000</span>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="button-group">
+        <button
+          mat-raised-button
+          color="primary"
+          (click)="startPreprocessing()"
+          [disabled]="isProcessing || !uploadedFileId || isUploading"
+        >
+          <mat-icon>play_arrow</mat-icon>
+          Start Processing
+        </button>
+        <button
+          mat-raised-button
+          color="accent"
+          (click)="downloadResults()"
+          [disabled]="processedData.length === 0"
+        >
+          <mat-icon>download</mat-icon>
+          Download
+        </button>
+      </div>
+    </mat-card-content>
+  </mat-card>
+
+  <!-- Results Table -->
+  <mat-card class="results-panel">
+    <mat-card-content>
+      <div *ngIf="isProcessing" class="loading-spinner">
+        <mat-spinner></mat-spinner>
+        <p>Processing sequences...</p>
+      </div>
+
+      <div *ngIf="!isProcessing && !isUploading && processedData.length === 0" class="no-data">
+        <mat-icon>info</mat-icon>
+        <p *ngIf="!uploadedFileId">No data to display. Upload a file to begin.</p>
+        <p *ngIf="uploadedFileId">File uploaded. Configure parameters above and click "Start Processing".</p>
+      </div>
+
+      <div *ngIf="!isProcessing && !isUploading && processedData.length > 0" class="table-container">
+        <table mat-table [dataSource]="processedData" class="results-table">
+          <!-- ID Column -->
+          <ng-container matColumnDef="id">
+            <th mat-header-cell *matHeaderCellDef>ID</th>
+            <td mat-cell *matCellDef="let element">{{ element.id }}</td>
+          </ng-container>
+
+          <!-- Sequence Column -->
+          <ng-container matColumnDef="sequence">
+            <th mat-header-cell *matHeaderCellDef>Sequence</th>
+            <td mat-cell *matCellDef="let element" class="sequence-cell">
+              {{ element.sequence }}
+            </td>
+          </ng-container>
+
+          <!-- Length Column -->
+          <ng-container matColumnDef="length">
+            <th mat-header-cell *matHeaderCellDef>Length</th>
+            <td mat-cell *matCellDef="let element">{{ element.length }}</td>
+          </ng-container>
+
+          <!-- Average Error Column -->
+          <ng-container matColumnDef="avg_error">
+            <th mat-header-cell *matHeaderCellDef>Avg Error</th>
+            <td mat-cell *matCellDef="let element">
+              {{ element.avg_error?.toFixed(6) || 'N/A' }}
+            </td>
+          </ng-container>
+
+          <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+          <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
+        </table>
+      </div>
+    </mat-card-content>
+  </mat-card>
+</div>

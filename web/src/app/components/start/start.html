@@ -1,1 +1,19 @@
-<p>start works!</p>
+<div class="start-container">
+  <mat-tab-group [(selectedIndex)]="selectedTabIndex" animationDuration="300ms">
+    <mat-tab label="Preprocess">
+      <app-preprocess></app-preprocess>
+    </mat-tab>
+    
+    <mat-tab label="Count">
+      <div class="tab-content">
+        <p>Count functionality coming soon...</p>
+      </div>
+    </mat-tab>
+    
+    <mat-tab label="Recount">
+      <div class="tab-content">
+        <p>Recount functionality coming soon...</p>
+      </div>
+    </mat-tab>
+  </mat-tab-group>
+</div>
